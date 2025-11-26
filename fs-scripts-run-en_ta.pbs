@@ -1,0 +1,53 @@
+#!/bin/bash
+#PBS -P CFP01-CF-060
+#PBS -j oe
+#PBS -k oed
+#PBS -N mt_train
+#PBS -M e1583535@u.nus.edu
+#PBS -q auto
+#PBS -m abe
+#PBS -l select=1:ngpus=8
+#PBS -l walltime=96:00:00
+
+cd $PBS_O_WORKDIR;
+
+image="/app1/common/singularity-img/hopper/cuda/cuda_12.1.0-cudnn8-devel-u20.04.sif"
+
+module load singularity
+
+singularity exec -e \
+--env HF_HOME=/scratch/e1583535/cache \
+--env HF_DATASETS_CACHE=/scratch/e1583535/cache/datasets \
+$image bash << EOF > ./logs/train/stdout.$PBS_JOBID.log 2> ./logs/train/stderr.$PBS_JOBID.log
+
+source /hpctmp/e1583535/virtualenvs/fairseq-env/bin/activate
+
+echo "training with fairseq..."
+
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+export PYTHONPATH=/scratch/e1583535/my-mt/lib/fairseq:$PYTHONPATH
+
+python /scratch/e1583535/my-mt/lib/fairseq/fairseq_cli/train.py /scratch/e1583535/my-mt/fs-data-bin/en-ta \
+    --arch transformer_wmt23_hw_tsc \
+    --task rdrop_translation --source-lang en --target-lang ta \
+    --optimizer adam --adam-betas '(0.9, 0.98)' --adam-eps 1e-08 \
+    --lr-scheduler inverse_sqrt --lr 0.0005 \
+    --warmup-init-lr 1e-07 --warmup-updates 4000 \
+    --weight-decay 0.0001 --clip-norm 0.0 \
+    --reg-alpha 5 \
+    --label-smoothing 0.1 --criterion reg_label_smoothed_cross_entropy \
+    --max-tokens 8192 --update-freq 6 --max-epoch 8 --fp16 \
+    --skip-invalid-size-inputs-valid-test \
+    --eval-bleu \
+    --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \
+    --eval-bleu-detok moses --eval-bleu-remove-bpe \
+    --best-checkpoint-metric bleu --maximize-best-checkpoint-metric \
+    --user-dir /scratch/e1583535/my-mt/lib/rdrop \
+    --save-dir /scratch/e1583535/my-mt/fs-checkpoints/en-ta \
+    --patience 3
+
+# you can put more commands here
+echo "Done at $(date)"
+
+EOF

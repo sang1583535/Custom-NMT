@@ -1,0 +1,127 @@
+#!/bin/bash
+#PBS -P CFP01-CF-060
+#PBS -j oe
+#PBS -k oed
+#PBS -N mt_train_preprocess
+#PBS -M e1583535@u.nus.edu
+#PBS -q auto
+#PBS -m abe
+#PBS -l select=1:ncpus=8
+#PBS -l walltime=128:00:00
+
+cd $PBS_O_WORKDIR;
+
+image="/app1/common/singularity-img/hopper/cuda/cuda_12.1.0-cudnn8-devel-u20.04.sif"
+
+module load singularity
+
+singularity exec -e \
+--env HF_HOME=/scratch/e1583535/cache \
+--env HF_DATASETS_CACHE=/scratch/e1583535/cache/datasets \
+$image bash << EOF > ./logs/prep/stdout.$PBS_JOBID.log 2> ./logs/prep/stderr.$PBS_JOBID.log
+
+source /hpctmp/e1583535/virtualenvs/fairseq-env/bin/activate
+
+src=en
+tgt=km
+src2=eng
+tgt2=khm
+fixed=en-km
+LIB=/scratch/e1583535/my-mt/lib
+SCRIPTS=\$LIB/mosesdecoder/scripts
+TOKENIZER=\$SCRIPTS/tokenizer/tokenizer.perl
+DETOKENIZER=\$SCRIPTS/tokenizer/detokenizer.perl
+CLEAN=\$SCRIPTS/training/clean-corpus-n.perl
+NORM_PUNC=\$SCRIPTS/tokenizer/normalize-punctuation.perl
+REM_NON_PRINT_CHAR=\$SCRIPTS/tokenizer/remove-non-printing-char.perl
+APEXROOT=\$LIB/apex
+FSROOT=\$LIB/fairseq/fairseq_cli
+BPEROOT=\$LIB/subword-nmt/subword_nmt
+BPE_TOKENS=36000
+
+lang=\$src-\$tgt
+orig=/scratch/e1583535/my-mt/fs-data/\$fixed
+prep=\$orig/prep
+tmp=\$prep/tmp
+tst=/scratch/e1583535/my-mt/datasets/flores101/devtest
+
+echo "Step 2: Pre-processing data"
+echo "pre-processing train data..."
+for l in \$src \$tgt; do
+    rm -f \$tmp/train.\$l
+    cat \$orig/train.\$l | \
+        perl \$NORM_PUNC \$l | \
+        perl \$REM_NON_PRINT_CHAR | \
+        perl \$TOKENIZER -threads 8 -a -l \$l >> \$tmp/train.\$l
+done
+
+echo "pre-processing val data..."
+for l in \$src \$tgt; do
+    rm -f \$tmp/val.\$l
+    cat \$orig/val.\$l | \
+        perl \$NORM_PUNC \$l | \
+        perl \$REM_NON_PRINT_CHAR | \
+        perl \$TOKENIZER -threads 8 -a -l \$l >> \$tmp/valid.\$l
+done
+
+echo "Step 3: Pre-processing test data"
+echo "pre-processing test data..."
+for l in \$src \$tgt; do
+    if [ "\$l" == "\$src" ]; then
+        t="\$src2"
+    else
+        t="\$tgt2"
+    fi
+    echo \$tst/\$t.devtest
+    grep '' \$tst/\$t.devtest | \
+        # sed -e 's/<seg id="[0-9]*">\s*//g' | \
+        # sed -e 's/\s*<\/seg>\s*//g' | \
+        sed -e "s/\’/\'/g" | \
+    perl \$TOKENIZER -threads 8 -a -l \$l > \$tmp/test.\$l
+    echo ""
+done
+
+echo "Step 5: Creating combined training file for BPE learning"
+TRAIN=\$tmp/train.\$lang
+BPE_CODE=\$prep/code
+rm -f \$TRAIN
+# combine parallel texts
+paste "\$tmp/train.\$src" "\$tmp/train.\$tgt" > "\$TRAIN"
+
+echo "Step 6: Learning BPE codes"
+rm -f \$BPE_CODE
+python \$BPEROOT/learn_bpe.py -s \$BPE_TOKENS < \$TRAIN > \$BPE_CODE
+
+echo "Step 7: Applying BPE codes"
+for l in \$src \$tgt; do
+    for f in train.\$l valid.\$l test.\$l; do
+        echo "applying BPE to \$f..."
+        python \$BPEROOT/apply_bpe.py -c \$BPE_CODE < \$tmp/\$f > \$tmp/bpe.\$f
+    done
+done
+
+echo "Step 8: Cleaning BPE data"
+perl \$CLEAN -ratio 1.5 \$tmp/bpe.train \$src \$tgt \$prep/train 1 250
+perl \$CLEAN -ratio 1.5 \$tmp/bpe.valid \$src \$tgt \$prep/valid 1 250
+
+echo "step 9: Copying test data to prep directory"
+for L in \$src \$tgt; do
+    cp \$tmp/bpe.test.\$L \$prep/test.\$L
+done
+
+fs_task=\$lang
+fs_data=/scratch/e1583535/my-mt/fs-data-bin/\$fixed
+fs_chkpts=/scratch/e1583535/my-mt/fs-checkpoints/\$fs_task
+fs_res=/scratch/e1583535/my-mt/fs-results/\$fs_task
+fs_log=/scratch/e1583535/my-mt/logs/prep/\$fs_task
+
+mkdir -p \$fs_log
+
+echo "Step 10: Preprocessing with fairseq"
+echo "preprocessing with fairseq..."
+rm -rf \$fs_data
+python \$FSROOT/preprocess.py --source-lang \$src --target-lang \$tgt \
+    --trainpref \$prep/train --validpref \$prep/valid --testpref \$prep/test \
+    --destdir \$fs_data --workers 20
+
+EOF
