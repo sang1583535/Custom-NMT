@@ -2,7 +2,7 @@
 #PBS -P CFP01-CF-060
 #PBS -j oe
 #PBS -k oed
-#PBS -N mt_preprocess_km
+#PBS -N mt_train_preprocess
 #PBS -M e1583535@u.nus.edu
 #PBS -q auto
 #PBS -m abe
@@ -17,21 +17,21 @@ module load singularity
 
 BASE_LOG_DIR=/scratch/e1583535/my-mt/logs
 
-mkdir -p $BASE_LOG_DIR/prep/en-km
+mkdir -p $BASE_LOG_DIR/prep/en-zh
 
 singularity exec -e \
 --env HF_HOME=/scratch/e1583535/cache \
 --env HF_DATASETS_CACHE=/scratch/e1583535/cache/datasets \
-$image bash << EOF > $BASE_LOG_DIR/prep/en-km/stdout.$PBS_JOBID.log 2> $BASE_LOG_DIR/prep/en-km/stderr.$PBS_JOBID.log
+$image bash << EOF > $BASE_LOG_DIR/prep/en-zh/stdout.$PBS_JOBID.log 2> $BASE_LOG_DIR/prep/en-zh/stderr.$PBS_JOBID.log
 
 source /hpctmp/e1583535/virtualenvs/fairseq-env/bin/activate
 
 src=en
-tgt=km
+tgt=zh
 src2=eng
-tgt2=khm
-fixed=en-km
-custom=km
+tgt2=zho_simpl
+fixed=en-zh
+custom=zh
 
 LIB=/scratch/e1583535/my-mt/lib
 SCRIPTS=\$LIB/mosesdecoder/scripts
@@ -89,18 +89,18 @@ done
 
 echo "pre-processing test data..."
 for l in \$src \$tgt; do
-    if [ "\${l}" == "\${src}" ]; then
-        t="\${src2}"
+    if [ "\$l" == "\$src" ]; then
+        t="\$src2"
     else
-        t="\${tgt2}"
+        t="\$tgt2"
     fi
     echo \$tst/\$t.devtest
-    if [ "\${l}" == "\${custom}" ]; then
-        grep '' \$tst/\${t}.devtest | \
+    if [ "\$l" == "\$custom" ]; then
+        grep '' \$tst/\$t.devtest | \
             sed -e "s/\’/\'/g" | \
             python \$TOKENIZER_CUSTOM > \$tmp/test.\$l
     else
-        grep '' \$tst/\${t}.devtest | \
+        grep '' \$tst/\$t.devtest | \
             sed -e "s/\’/\'/g" | \
             perl \$TOKENIZER -threads 16 -a -l \$l > \$tmp/test.\$l
     fi
