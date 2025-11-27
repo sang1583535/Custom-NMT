@@ -62,7 +62,7 @@ else
         perl $TOKENIZER -threads 16 -a -l $src > $fs_res/tmp/test.$src.tok
 fi
 
-checkpoints=("1" "2" "3" "4" "5" "6" "7" "8" "_best")
+checkpoints=("_best")
 
 for c in "\${checkpoints[@]}"; do
     echo "evaluating checkpoint-\${c}..."

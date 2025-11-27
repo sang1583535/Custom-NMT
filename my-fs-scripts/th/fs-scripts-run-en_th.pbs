@@ -45,7 +45,9 @@ python /scratch/e1583535/my-mt/lib/fairseq/fairseq_cli/train.py /scratch/e158353
     --best-checkpoint-metric bleu --maximize-best-checkpoint-metric \
     --user-dir /scratch/e1583535/my-mt/lib/rdrop \
     --save-dir /scratch/e1583535/my-mt/fs-checkpoints/en-th \
-    --patience 3
+    --patience 3 \
+    --save-interval 1 \
+    --keep-last-epochs 3
 
 # you can put more commands here
 echo "Done at $(date)"

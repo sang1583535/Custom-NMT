@@ -41,7 +41,7 @@ python /scratch/e1583535/my-mt/lib/fairseq/fairseq_cli/train.py /scratch/e158353
     --weight-decay 0.0001 --clip-norm 0.0 \
     --reg-alpha 5 \
     --label-smoothing 0.1 --criterion reg_label_smoothed_cross_entropy \
-    --max-tokens 8192 --update-freq 6 --max-epoch 8 --fp16 \
+    --max-tokens 8192 --update-freq 6 --max-epoch 24 --fp16 \
     --skip-invalid-size-inputs-valid-test \
     --eval-bleu \
     --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \

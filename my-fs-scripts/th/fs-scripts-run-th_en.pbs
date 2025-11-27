@@ -15,10 +15,14 @@ image="/app1/common/singularity-img/hopper/cuda/cuda_12.1.0-cudnn8-devel-u20.04.
 
 module load singularity
 
+BASE_LOG_DIR=/scratch/e1583535/my-mt/logs
+
+mkdir -p $BASE_LOG_DIR/train/en-th
+
 singularity exec -e \
 --env HF_HOME=/scratch/e1583535/cache \
 --env HF_DATASETS_CACHE=/scratch/e1583535/cache/datasets \
-$image bash << EOF > ./logs/train/stdout.$PBS_JOBID.log 2> ./logs/train/stderr.$PBS_JOBID.log
+$image bash << EOF > $BASE_LOG_DIR/train/en-th/stdout.$PBS_JOBID.log 2> $BASE_LOG_DIR/train/en-th/stderr.$PBS_JOBID.log
 
 source /hpctmp/e1583535/virtualenvs/fairseq-env/bin/activate
 
@@ -28,9 +32,9 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
 export PYTHONPATH=/scratch/e1583535/my-mt/lib/fairseq:$PYTHONPATH
 
-python /scratch/e1583535/my-mt/lib/fairseq/fairseq_cli/train.py /scratch/e1583535/my-mt/fs-data-bin/en-tl \
+python /scratch/e1583535/my-mt/lib/fairseq/fairseq_cli/train.py /scratch/e1583535/my-mt/fs-data-bin/en-th \
     --arch transformer_wmt23_hw_tsc \
-    --task rdrop_translation --source-lang tl --target-lang en \
+    --task rdrop_translation --source-lang th --target-lang en \
     --optimizer adam --adam-betas '(0.9, 0.98)' --adam-eps 1e-08 \
     --lr-scheduler inverse_sqrt --lr 0.0005 \
     --warmup-init-lr 1e-07 --warmup-updates 4000 \
@@ -44,7 +48,7 @@ python /scratch/e1583535/my-mt/lib/fairseq/fairseq_cli/train.py /scratch/e158353
     --eval-bleu-detok moses --eval-bleu-remove-bpe \
     --best-checkpoint-metric bleu --maximize-best-checkpoint-metric \
     --user-dir /scratch/e1583535/my-mt/lib/rdrop \
-    --save-dir /scratch/e1583535/my-mt/fs-checkpoints/tl-en \
+    --save-dir /scratch/e1583535/my-mt/fs-checkpoints/th-en \
     --patience 3
 
 # you can put more commands here

@@ -28,7 +28,7 @@ LIB=/scratch/e1583535/my-mt/lib
 SCRIPTS=$LIB/mosesdecoder/scripts
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
 DETOKENIZER=$SCRIPTS/tokenizer/detokenizer.perl
-TOKENIZER_CUSTOM=$LIB/custom-tokenizers/$custom/tokenize.py
+TOKENIZER_CUSTOM=$LIB/custom-tokenizers/$custom/custom_th_tokenize.py
 DETOKENIZER_CUSTOM=$LIB/custom-tokenizers/$custom/detokenize.py
 orig=/scratch/e1583535/my-mt/fs-data/$fixed
 prep=$orig/prep
@@ -62,38 +62,38 @@ else
         perl $TOKENIZER -threads 16 -a -l $src > $fs_res/tmp/test.$src.tok
 fi
 
-checkpoints=("1" "2" "3" "4" "5" "6" "7" "8" "_best")
+checkpoints=("_best")
 
-for c in "\${checkpoints[@]}"; do
-    echo "evaluating checkpoint-\${c}..."
+# for c in "\${checkpoints[@]}"; do
+#     echo "evaluating checkpoint-\${c}..."
     
-    if [ "$src" == "$custom" ]; then
-        cat $fs_res/tmp/test.$src.tok | \
-        python $FSROOT/interactive.py $fs_data \
-            --path $fs_chkpts/checkpoint\$c.pt \
-            --beam 5 --source-lang $src --target-lang $tgt \
-            --user-dir $LIB/rdrop \
-            --remove-bpe --bpe subword_nmt --bpe-codes $BPE_CODE > $fs_res/generate-test-\$c.txt
-    else
-        cat $tst/$src2.devtest | \
-        python $FSROOT/interactive.py $fs_data \
-            --path $fs_chkpts/checkpoint\$c.pt \
-            --beam 5 --source-lang $src --target-lang $tgt \
-            --user-dir $LIB/rdrop --tokenizer moses \
-            --remove-bpe --bpe subword_nmt --bpe-codes $BPE_CODE > $fs_res/generate-test-\$c.txt
-    fi
+#     if [ "$src" == "$custom" ]; then
+#         cat $fs_res/tmp/test.$src.tok | \
+#         python $FSROOT/interactive.py $fs_data \
+#             --path $fs_chkpts/checkpoint\$c.pt \
+#             --beam 5 --source-lang $src --target-lang $tgt \
+#             --user-dir $LIB/rdrop \
+#             --remove-bpe --bpe subword_nmt --bpe-codes $BPE_CODE > $fs_res/generate-test-\$c.txt
+#     else
+#         cat $tst/$src2.devtest | \
+#         python $FSROOT/interactive.py $fs_data \
+#             --path $fs_chkpts/checkpoint\$c.pt \
+#             --beam 5 --source-lang $src --target-lang $tgt \
+#             --user-dir $LIB/rdrop --tokenizer moses \
+#             --remove-bpe --bpe subword_nmt --bpe-codes $BPE_CODE > $fs_res/generate-test-\$c.txt
+#     fi
 
-    if [ "$tgt" == "$custom" ]; then
-        grep ^D- $fs_res/generate-test-\$c.txt | sort -V | cut -f3 | \
-            python $DETOKENIZER_CUSTOM > $fs_res/translations-\$c.txt
-    else
-        grep ^D- $fs_res/generate-test-\$c.txt | sort -V | cut -f3 | \
-            perl $DETOKENIZER -threads 8 -l $tgt > $fs_res/translations-\$c.txt
-    fi
+#     if [ "$tgt" == "$custom" ]; then
+#         grep ^D- $fs_res/generate-test-\$c.txt | sort -V | cut -f3 | \
+#             python $DETOKENIZER_CUSTOM > $fs_res/translations-\$c.txt
+#     else
+#         grep ^D- $fs_res/generate-test-\$c.txt | sort -V | cut -f3 | \
+#             perl $DETOKENIZER -threads 8 -l $tgt > $fs_res/translations-\$c.txt
+#     fi
 
-    echo "checkpoint-\${c} evaluation completed"
-    sleep 10
-done
+#     echo "checkpoint-\${c} evaluation completed"
+#     sleep 10
+# done
 
 echo "computing evaluation scores..."
 
