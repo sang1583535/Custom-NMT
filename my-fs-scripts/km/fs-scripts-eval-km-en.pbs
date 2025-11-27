@@ -11,18 +11,18 @@
 
 cd $PBS_O_WORKDIR;
 
-src=zh
+src=km
 tgt=en
-src2=zho_simpl
+src2=khm
 tgt2=eng
-fixed=en-zh
-custom=zh
+fixed=en-km
+custom=km
 lang=$src-$tgt
 fs_task=$lang
-tst=datasets/flores101/devtest
-fs_data=fs-data-bin/$fixed
-fs_chkpts=fs-checkpoints/$fs_task
-fs_res=fs-results/$fs_task
+tst=/scratch/e1583535/my-mt/datasets/flores101/devtest
+fs_data=/scratch/e1583535/my-mt/fs-data-bin/$fixed
+fs_chkpts=/scratch/e1583535/my-mt/fs-checkpoints/$fs_task
+fs_res=/scratch/e1583535/my-mt/fs-results/$fs_task
 FSROOT=/scratch/e1583535/my-mt/lib/fairseq/fairseq_cli
 LIB=/scratch/e1583535/my-mt/lib
 SCRIPTS=$LIB/mosesdecoder/scripts
@@ -30,7 +30,7 @@ TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
 DETOKENIZER=$SCRIPTS/tokenizer/detokenizer.perl
 TOKENIZER_CUSTOM=$LIB/custom-tokenizers/$custom/tokenize.py
 DETOKENIZER_CUSTOM=$LIB/custom-tokenizers/$custom/detokenize.py
-orig=fs-data/$fixed
+orig=/scratch/e1583535/my-mt/fs-data/$fixed
 prep=$orig/prep
 BPE_CODE=$prep/code
 
@@ -38,24 +38,29 @@ image="/app1/common/singularity-img/hopper/cuda/cuda_12.1.0-cudnn8-devel-u20.04.
 
 module load singularity
 
+BASE_LOG_DIR=/scratch/e1583535/my-mt/logs
+
+mkdir -p $BASE_LOG_DIR/eval/en-km
+
 singularity exec -e \
 --env HF_HOME=/scratch/e1583535/cache \
 --env HF_DATASETS_CACHE=/scratch/e1583535/cache/datasets \
-$image bash << EOF > ./logs/eval/stdout.$PBS_JOBID.log 2> ./logs/eval/stderr.$PBS_JOBID.log
+$image bash << EOF > $BASE_LOG_DIR/eval/en-km/stdout.$PBS_JOBID.log 2> $BASE_LOG_DIR/eval/en-km/stderr.$PBS_JOBID.log
 
 source /hpctmp/e1583535/virtualenvs/fairseq-env/bin/activate
 
 echo "generating with fairseq..."
+mkdir -p $fs_res/tmp
 
 export CUDA_VISIBLE_DEVICES=0,1
 
 if [ "$src" == "$custom" ]; then
-        grep '' $tst/$src2.devtest | \
-            python $TOKENIZER_CUSTOM > $fs_res/tmp/test.$src.tok
-    else
-        grep '' $tst/$src2.devtest | \
-            perl $TOKENIZER -threads 8 -a -l $src > $fs_res/tmp/test.$src.tok
-    fi
+    grep '' $tst/$src2.devtest | \
+        python $TOKENIZER_CUSTOM > $fs_res/tmp/test.$src.tok
+else
+    grep '' $tst/$src2.devtest | \
+        perl $TOKENIZER -threads 16 -a -l $src > $fs_res/tmp/test.$src.tok
+fi
 
 checkpoints=("1" "2" "3" "4" "5" "6" "7" "8" "_best")
 
