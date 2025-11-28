@@ -54,13 +54,13 @@ mkdir -p $fs_res/tmp
 
 export CUDA_VISIBLE_DEVICES=0,1
 
-if [ "$src" == "$custom" ]; then
-    grep '' $tst/$src2.devtest | \
-        python $TOKENIZER_CUSTOM > $fs_res/tmp/test.$src.tok
-else
-    grep '' $tst/$src2.devtest | \
-        perl $TOKENIZER -threads 16 -a -l $src > $fs_res/tmp/test.$src.tok
-fi
+# if [ "$src" == "$custom" ]; then
+#     grep '' $tst/$src2.devtest | \
+#         python $TOKENIZER_CUSTOM > $fs_res/tmp/test.$src.tok
+# else
+#     grep '' $tst/$src2.devtest | \
+#         perl $TOKENIZER -threads 16 -a -l $src > $fs_res/tmp/test.$src.tok
+# fi
 
 checkpoints=("_best")
 

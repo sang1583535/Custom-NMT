@@ -15,10 +15,14 @@ image="/app1/common/singularity-img/hopper/cuda/cuda_12.1.0-cudnn8-devel-u20.04.
 
 module load singularity
 
+BASE_LOG_DIR=/scratch/e1583535/my-mt/logs
+
+mkdir -p $BASE_LOG_DIR/train/en-th
+
 singularity exec -e \
 --env HF_HOME=/scratch/e1583535/cache \
 --env HF_DATASETS_CACHE=/scratch/e1583535/cache/datasets \
-$image bash << EOF > ./logs/train/stdout.$PBS_JOBID.log 2> ./logs/train/stderr.$PBS_JOBID.log
+$image bash << EOF > $BASE_LOG_DIR/train/en-th/stdout.$PBS_JOBID.log 2> $BASE_LOG_DIR/train/en-th/stderr.$PBS_JOBID.log
 
 source /hpctmp/e1583535/virtualenvs/fairseq-env/bin/activate
 
